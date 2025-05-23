@@ -1,0 +1,40 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Configuration commune à toutes les VMs
+  config.vm.box = "ubuntu/focal64"
+  config.vm.provider "virtualbox" do |vb|
+    # # Pour eviter les problemes de resolution de nom (DNS)
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"] 
+    vb.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+  end
+
+  # Configuration de la VM Serveur (Controller)
+  config.vm.define "testS" do |server| # Remplace ealves par ton login
+    server.vm.hostname = "testS"      # Remplace ealves par ton login
+    server.vm.network "private_network", ip: "192.168.56.110"
+
+    server.vm.provider "virtualbox" do |vb_server| # Changé vb en vb_server pour éviter confusion de scope si besoin
+      vb_server.name = "testS-k3s-server" # Remplace mylogin par ton login
+      vb_server.memory = "1024"
+      vb_server.cpus = "1"
+    end
+
+    server.vm.provision "shell", path: "scripts/install_server.sh"
+  end
+
+  # Configuration de la VM Worker (Agent)
+  config.vm.define "testSW" do |worker| # Remplace ealves par ton login
+    worker.vm.hostname = "testSW"       # Remplace ealves par ton login
+    worker.vm.network "private_network", ip: "192.168.56.111"
+
+    worker.vm.provider "virtualbox" do |vb_worker| # Changé vb en vb_worker
+      vb_worker.name = "testSW-k3s-worker" # Remplace ealves par ton login
+      vb_worker.memory = "1024"
+      vb_worker.cpus = "1"
+    end
+
+    worker.vm.provision "shell", path: "scripts/install_worker.sh"
+  end
+end

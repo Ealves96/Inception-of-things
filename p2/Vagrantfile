@@ -1,0 +1,136 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+    # Mettre à jour /etc/hosts de l'hôte si le plugin est installé
+    if Vagrant.has_plugin?("vagrant-hostsupdater")
+      config.hostsupdater.aliases = [
+        "app1.com",
+        "app2.com",
+        "app3.local"
+      ]
+    end
+  
+    config.vm.box = "ubuntu/focal64"
+  
+    # Réglages VirtualBox globaux
+    config.vm.provider "virtualbox" do |vb|
+      vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+      vb.customize ["modifyvm", :id, "--natdnsproxy1",      "on"]
+    end
+  
+    # Définition du nœud unique
+    config.vm.define "testS" do |server|
+      server.vm.hostname = "testS"
+      server.vm.network  "private_network", ip: "192.168.56.110"
+      server.vm.synced_folder "k3s/", "/vagrant/k3s"  # manifests Kubernetes
+  
+      server.vm.provider "virtualbox" do |vb_s|
+        vb_s.name   = "testS-k3s-server"
+        vb_s.memory = 2048  # Augmentation de la mémoire à 2GB
+        vb_s.cpus   = 2     # Augmentation du nombre de CPUs à 2
+      end
+
+      # 1) Provisionnement : install K3s + patch kubeconfig
+      server.vm.provision "shell", path: "scripts/install_k3s.sh"
+
+      # 2) Provisionnement : configuration du kubeconfig
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Configuration du kubeconfig..."
+        mkdir -p /home/vagrant/.kube
+        cp /etc/rancher/k3s/k3s.yaml /home/vagrant/.kube/config
+        chown -R vagrant:vagrant /home/vagrant/.kube
+        echo "export KUBECONFIG=/home/vagrant/.kube/config" >> /home/vagrant/.bashrc
+        echo 'alias k=kubectl' >> /home/vagrant/.bashrc
+        echo ">>> [SERVER] Configuration du kubeconfig terminée."
+      SHELL
+
+      # 3) Provisionnement : déployer automatiquement tous les manifests
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Déploiement des manifests Kubernetes..."
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml apply -f /vagrant/k3s/
+        for app in app-1 app-2 app-3; do
+          kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml rollout status deployment/$app -n default --timeout=60s
+        done
+        echo ">>> [SERVER] Déploiement terminé."
+      SHELL
+
+      # 4) Provisionnement : configuration des entrées hosts
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Configuration des entrées hosts..."
+        echo "192.168.56.110 app1.com" >> /etc/hosts
+        echo "192.168.56.110 app2.com" >> /etc/hosts
+        echo "192.168.56.110 app3.local" >> /etc/hosts
+        echo ">>> [SERVER] Configuration des hosts terminée."
+      SHELL
+
+      # 5) Provisionnement : vérification et redémarrage de K3s si nécessaire
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Vérification de K3s..."
+        if ! systemctl is-active --quiet k3s; then
+          echo ">>> Redémarrage de K3s..."
+          systemctl restart k3s
+          sleep 10
+        fi
+        echo ">>> [SERVER] K3s est actif."
+      SHELL
+
+      # 6) Provisionnement : configuration de l'ingress
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Configuration de l'ingress..."
+        # Attendre que Traefik soit prêt
+        echo "En attente de Traefik..."
+        timeout=120
+        while [ $timeout -gt 0 ]; do
+          if kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get pods -n kube-system | grep traefik | grep Running > /dev/null; then
+            echo "Traefik est prêt!"
+            break
+          fi
+          sleep 5
+          timeout=$((timeout-5))
+          echo "Encore $timeout secondes..."
+        done
+
+        if [ $timeout -le 0 ]; then
+          echo "ERREUR: Traefik n'a pas démarré à temps"
+          exit 1
+        fi
+
+        # Réappliquer l'ingress
+        echo "Application de l'ingress..."
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml apply -f /vagrant/k3s/ingress.yaml
+
+        # Attendre que l'ingress soit prêt
+        echo "En attente de l'ingress..."
+        timeout=60
+        while [ $timeout -gt 0 ]; do
+          if kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get ingress demo-ingress > /dev/null 2>&1; then
+            echo "Ingress est prêt!"
+            break
+          fi
+          sleep 5
+          timeout=$((timeout-5))
+          echo "Encore $timeout secondes..."
+        done
+
+        if [ $timeout -le 0 ]; then
+          echo "ERREUR: L'ingress n'a pas été créé à temps"
+          exit 1
+        fi
+
+        echo ">>> [SERVER] Configuration de l'ingress terminée."
+      SHELL
+
+      # 7) Provisionnement : vérification finale
+      server.vm.provision "shell", privileged: true, inline: <<-SHELL
+        echo ">>> Vérification finale..."
+        echo "Pods:"
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get pods
+        echo "Services:"
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get svc
+        echo "Ingress:"
+        kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml get ingress
+        echo ">>> [SERVER] Vérification finale terminée."
+      SHELL
+    end
+end 

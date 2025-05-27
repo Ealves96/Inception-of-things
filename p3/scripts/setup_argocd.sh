@@ -14,12 +14,6 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Vérifier si le script est exécuté en tant que root
-if [ "$EUID" -ne 0 ]; then
-    print_error "Ce script doit être exécuté en tant que root (sudo)"
-    exit 1
-fi
-
 # Vérifier si kubectl est configuré
 if ! kubectl get nodes &> /dev/null; then
     print_error "kubectl n'est pas configuré correctement"

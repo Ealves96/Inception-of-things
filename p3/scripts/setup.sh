@@ -19,12 +19,6 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Vérifier si le script est exécuté en tant que root
-if [ "$EUID" -ne 0 ]; then
-    print_error "Ce script doit être exécuté en tant que root (sudo)"
-    exit 1
-fi
-
 # Vérifier si les scripts existent
 if [ ! -f "install_dependencies.sh" ] || [ ! -f "setup_k3d.sh" ] || [ ! -f "setup_argocd.sh" ]; then
     print_error "Les scripts nécessaires ne sont pas trouvés dans le répertoire courant"
@@ -66,4 +60,4 @@ print_message "Pour vérifier que tout fonctionne correctement, exécutez :"
 echo "kubectl get pods -n argocd"
 echo "kubectl get pods -n dev"
 print_message "Pour accéder à l'interface Argo CD :"
-echo "kubectl port-forward svc/argocd-server -n argocd 8080:443" 
+echo "kubectl port-forward svc/argocd-server -n argocd 8080:443"

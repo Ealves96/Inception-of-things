@@ -57,23 +57,5 @@ spec:
   ports:
   - port: 8888
     targetPort: 8888
-  type: LoadBalancer
+  type: NodePort
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: wil-playground
-  namespace: dev
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: wil-playground.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: wil-playground
-            port:
-              number: 8888 

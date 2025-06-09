@@ -42,8 +42,8 @@ spec:
       containers:
       - name: wil-playground
         # To change versions, modify this tag between v1 and v2
-        image: wil42/playground:v1
-        # image: wil42/playground:v2
+        # image: wil42/playground:v1
+        image: wil42/playground:v2
         ports:
         - containerPort: 8888
 ---

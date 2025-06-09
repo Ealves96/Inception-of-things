@@ -22,6 +22,8 @@ print_error() {
 }
 
 GITLAB_NAMESPACE="gitlab"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONF_DIR="$(dirname "$SCRIPT_DIR")/confs"
 
 # 1. Vérifier si Helm est disponible
 if ! command -v helm &> /dev/null; then
@@ -63,53 +65,22 @@ print_message "Ajout du repo Helm de GitLab..."
 helm repo add gitlab https://charts.gitlab.io/
 helm repo update
 
-# 7. Créer un fichier de configuration pour GitLab
-print_message "Création de la configuration GitLab..."
-cat > gitlab-values.yaml << EOF
-global:
-  hosts:
-    domain: localhost
-  initialRootPassword:
-    secret: gitlab-root-password
-  minio:
-    enabled: false
-  registry:
-    enabled: false
-  shell:
-    enabled: false
-  gitaly:
-    persistence:
-      size: 10Gi
-  postgresql:
-    persistence:
-      size: 8Gi
-  redis:
-    persistence:
-      size: 5Gi
-certmanager:
-  install: false
-nginx-ingress:
-  enabled: false
-prometheus:
-  install: false
-EOF
-
-# 8. Installer GitLab
+# 7. Installer GitLab
 print_message "Installation de GitLab (cela peut prendre plusieurs minutes)..."
 helm upgrade --install gitlab gitlab/gitlab \
   --namespace "${GITLAB_NAMESPACE}" \
-  --values gitlab-values.yaml \
+  --values "${CONF_DIR}/gitlab-values.yaml" \
   --timeout 600s
 
-# 9. Attendre que les pods soient prêts
+# 8. Attendre que les pods soient prêts
 print_message "Attente que les pods GitLab soient prêts..."
 kubectl wait --for=condition=available deployment/gitlab-webservice-default -n "${GITLAB_NAMESPACE}" --timeout=600s
 
-# 10. Obtenir le mot de passe root
+# 9. Obtenir le mot de passe root
 print_message "Récupération du mot de passe root..."
 kubectl get secret gitlab-gitlab-initial-root-password -n "${GITLAB_NAMESPACE}" -o jsonpath='{.data.password}' | base64 --decode ; echo
 
-# 11. Configurer le port-forwarding
+# 10. Configurer le port-forwarding
 print_message "Configuration du port-forwarding pour GitLab..."
 kubectl port-forward -n "${GITLAB_NAMESPACE}" svc/gitlab-webservice-default 8080:8181 &
 

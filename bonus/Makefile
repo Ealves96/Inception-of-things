@@ -3,17 +3,17 @@
 # Configuration de GitLab
 setup:
 	@echo "🚀 Configuration de GitLab..."
-	@chmod +x setup_gitlab.sh
-	@chmod +x configure_argocd_gitlab.sh
-	@./setup_gitlab.sh
-	@./configure_argocd_gitlab.sh
+	@chmod +x scripts/setup_gitlab.sh
+	@chmod +x scripts/configure_argocd_gitlab.sh
+	@./scripts/setup_gitlab.sh
+	@./scripts/configure_argocd_gitlab.sh
 
 # Nettoyage de l'installation
 clean:
 	@echo "🧹 Nettoyage de l'installation GitLab..."
 	@helm uninstall gitlab -n gitlab || true
 	@kubectl delete namespace gitlab || true
-	@rm -f gitlab-values.yaml
+	@rm -f confs/gitlab-values.yaml
 	@echo "✅ Nettoyage terminé"
 
 # État de l'installation

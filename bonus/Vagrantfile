@@ -1,0 +1,70 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "ubuntu/focal64"
+  config.vm.hostname = "inception-bonus"
+
+  # Configuration réseau
+  config.vm.network "private_network", type: "dhcp"
+
+  # Configuration des ressources
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "4096"
+    vb.cpus = 2
+    vb.name = "inception-bonus"
+  end
+
+  # Script de provisionnement
+  config.vm.provision "shell", inline: <<-SHELL
+    # Mise à jour du système
+    apt-get update
+    apt-get upgrade -y
+
+    # Installation des dépendances de base
+    apt-get install -y \
+      apt-transport-https \
+      ca-certificates \
+      curl \
+      gnupg \
+      lsb-release \
+      software-properties-common
+
+    # Installation de Docker
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt-get update
+    apt-get install -y docker-ce docker-ce-cli containerd.io
+
+    # Installation de k3d
+    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
+
+    # Installation de kubectl
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x kubectl
+    mv kubectl /usr/local/bin/
+
+    # Installation de Helm
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    # Installation d'ArgoCD CLI
+    curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+    install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+    rm argocd-linux-amd64
+
+    # Configuration de l'utilisateur vagrant pour Docker
+    usermod -aG docker vagrant
+
+    # Création des dossiers nécessaires
+    mkdir -p /home/vagrant/.kube
+    chown -R vagrant:vagrant /home/vagrant/.kube
+
+    # Message de fin d'installation
+    echo "✅ Installation des dépendances terminée"
+    echo "Pour commencer :"
+    echo "1. cd /vagrant/p3"
+    echo "2. make setup"
+    echo "3. cd /vagrant/bonus"
+    echo "4. make setup"
+  SHELL
+end 

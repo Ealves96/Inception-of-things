@@ -92,4 +92,4 @@ print_message "  kubectl -n ${ARGOCD_NAMESPACE} get secret argocd-initial-admin-
 
 # 8) Créer l’Application Argo CD pour déployer votre app
 print_message "Création de l’Application Argo CD pour déployer dans dev…"
-# kubectl apply -f ../manifests/application.yaml
+kubectl apply -f ../manifests/application.yaml

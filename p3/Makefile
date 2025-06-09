@@ -24,6 +24,11 @@ clean:
 	@k3d cluster delete inception-cluster || true
 	@kubectl delete namespace argocd || true
 	@kubectl delete namespace dev || true
+	@rm -f $(HOME)/.kube/config
+	@docker system prune -f >/dev/null 2>&1 || true
+	@docker volume prune -f >/dev/null 2>&1 || true
+	@docker network prune -f >/dev/null 2>&1 || true
+	@echo "✅ Nettoyage terminé"
 
 # État de l'installation
 status:

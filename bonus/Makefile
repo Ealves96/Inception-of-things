@@ -13,7 +13,6 @@ clean:
 	@echo "🧹 Nettoyage de l'installation GitLab..."
 	@helm uninstall gitlab -n gitlab || true
 	@kubectl delete namespace gitlab || true
-	@rm -f confs/gitlab-values.yaml
 	@echo "✅ Nettoyage terminé"
 
 # État de l'installation

@@ -2,69 +2,59 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/focal64"
-  config.vm.hostname = "inception-bonus"
-
-  # Configuration réseau
-  config.vm.network "private_network", type: "dhcp"
-
-  # Configuration des ressources
-  config.vm.provider "virtualbox" do |vb|
-    vb.memory = "4096"
-    vb.cpus = 2
-    vb.name = "inception-bonus"
+    # VM base
+    config.vm.box = "ubuntu/focal64"
+    config.vm.hostname = "inception-bonus"
+  
+    # Réseau privé DHCP
+    config.vm.network "private_network", type: "dhcp"
+  
+    # Ressources VirtualBox
+    config.vm.provider "virtualbox" do |vb|
+      vb.name   = "inception-bonus"
+      vb.memory = "4096"
+      vb.cpus   = 2
+    end
+  
+    # Partage du dossier p3 (Partie 3) dans la VM
+    config.vm.synced_folder "../p3", "/vagrant/p3"
+  
+    # Provisionnement shell : Partie 3 puis Bonus
+    config.vm.provision "shell", inline: <<-SHELL
+      set -eux
+  
+      #####
+      # 1) Partie 3 – K3d + Argo CD
+      #####
+      echo "▶▶▶ Lancement de la Partie 3 (K3d + Argo CD)…"
+      cd /vagrant/p3/scripts
+      chmod +x install_dependencies.sh setup_k3d.sh setup_argocd.sh
+  
+      echo "→ Installation des dépendances (Docker, k3d, kubectl, Helm, Argo CD CLI)…"
+      ./install_dependencies.sh
+  
+      echo "→ Création du cluster k3d…"
+      ./setup_k3d.sh
+  
+      echo "→ Installation et configuration d’Argo CD…"
+      ./setup_argocd.sh
+  
+      #####
+      # 2) Partie Bonus – GitLab & intégration Argo CD→GitLab
+      #####
+      echo "▶▶▶ Lancement de la Partie Bonus (GitLab + liaison)…"
+      cd /vagrant/bonus/scripts
+      chmod +x setup_gitlab.sh configure_argocd_gitlab.sh
+  
+      echo "→ Installation de GitLab CE via Helm…"
+      ./setup_gitlab.sh
+  
+      echo "→ Configuration d’Argo CD pour pointer sur GitLab…"
+      ./configure_argocd_gitlab.sh
+  
+      echo "✅ Provisioning complet terminé !"
+      echo "→ Cluster K3d et Argo CD disponibles"
+      echo "→ GitLab CE installé et lié à Argo CD"
+    SHELL
   end
-
-  # Script de provisionnement
-  config.vm.provision "shell", inline: <<-SHELL
-    # Mise à jour du système
-    apt-get update
-    apt-get upgrade -y
-
-    # Installation des dépendances de base
-    apt-get install -y \
-      apt-transport-https \
-      ca-certificates \
-      curl \
-      gnupg \
-      lsb-release \
-      software-properties-common
-
-    # Installation de Docker
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    apt-get update
-    apt-get install -y docker-ce docker-ce-cli containerd.io
-
-    # Installation de k3d
-    curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
-
-    # Installation de kubectl
-    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-    chmod +x kubectl
-    mv kubectl /usr/local/bin/
-
-    # Installation de Helm
-    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-    # Installation d'ArgoCD CLI
-    curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-    install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-    rm argocd-linux-amd64
-
-    # Configuration de l'utilisateur vagrant pour Docker
-    usermod -aG docker vagrant
-
-    # Création des dossiers nécessaires
-    mkdir -p /home/vagrant/.kube
-    chown -R vagrant:vagrant /home/vagrant/.kube
-
-    # Message de fin d'installation
-    echo "✅ Installation des dépendances terminée"
-    echo "Pour commencer :"
-    echo "1. cd /vagrant/p3"
-    echo "2. make setup"
-    echo "3. cd /vagrant/bonus"
-    echo "4. make setup"
-  SHELL
-end 
+  

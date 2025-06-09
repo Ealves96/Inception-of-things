@@ -1,0 +1,23 @@
+global:
+  edition: ce
+
+ingress:
+  configureCertmanager: false
+  enabled: true
+  hosts:
+    domain: example.local
+    name: gitlab
+
+webservice:
+  externalPort: 8181
+
+unicorn:
+  replicas: 1
+
+postgresql:
+  postgresPassword:
+    secret: gitlab-postgresql-password
+
+redis:
+  password:
+    secret: gitlab-redis-password

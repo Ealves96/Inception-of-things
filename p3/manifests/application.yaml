@@ -6,7 +6,7 @@ metadata:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: wil-playground
+  name: ealves-playground
   namespace: argocd
 spec:
   project: default
@@ -27,33 +27,33 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wil-playground
+  name: ealves-playground
   namespace: dev
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: wil-playground
+      app: ealves-playground
   template:
     metadata:
       labels:
-        app: wil-playground
+        app: ealves-playground
     spec:
       containers:
-      - name: wil-playground
+      - name: ealves-playground
         # To change versions, modify this tag between v1 and v2
-        image: wil42/playground:v1
+        image: ealves42/playground:v1
         ports:
         - containerPort: 8888
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: wil-playground
+  name: ealves-playground
   namespace: dev
 spec:
   selector:
-    app: wil-playground
+    app: ealves-playground
   ports:
   - port: 8888
     targetPort: 8888
